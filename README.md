@@ -1,55 +1,71 @@
-# Reto de Programación en Java con Spring 🚀
+# Microservicio de Transacciones con Anti-Fraude
 
-Este reto técnico nos permitirá conocer tus habilidades de desarrollo en Java y Spring Boot.  
-La idea es que te diviertas programando mientras demuestras tu enfoque para resolver problemas, buenas prácticas y diseño de código 😄.
+Este proyecto implementa un microservicio para la gestión de transacciones financieras con validación anti-fraude, utilizando Java, Spring Boot, PostgreSQL y Apache Kafka.
 
-> 📌 La forma correcta de enviar tu solución es mediante un **Pull Request (PR)** a este repositorio.
+## Características
 
----
+- Creación de transacciones financieras
+- Validación automática de transacciones mediante reglas de negocio
+- Actualización asíncrona del estado de las transacciones
+- Consulta de transacciones por ID externo
 
-## 🧩 Problema
+## Reglas de negocio
 
-Cada vez que se crea una transacción financiera, esta debe ser validada por nuestro microservicio de antifraude (**Anti-Fraud**). Luego, el mismo servicio envía un mensaje para actualizar el estado de la transacción.
+- Toda transacción con un valor **mayor a 1000** será automáticamente **rechazada**.
+- Las transacciones pasan por tres estados posibles: **Pendiente**, **Aprobado** y **Rechazado**.
 
-Por ahora, manejamos únicamente **tres estados**:
+## Flujo del proceso
 
-1. **Pendiente**
-2. **Aprobado**
-3. **Rechazado**
+1. El servicio recibe una solicitud para crear una transacción
+2. La transacción se guarda en la base de datos con estado "Pendiente"
+3. Se envía un evento a Kafka para notificar la creación de la transacción
+4. El servicio Anti-Fraude consume el evento y valida la transacción
+5. Anti-Fraude envía un evento con el resultado de la validación (Aprobado/Rechazado)
+6. El servicio de transacciones actualiza el estado de la transacción en la base de datos
 
-📌 *Regla de negocio*: Toda transacción con un valor **mayor a 1000** debe ser automáticamente **rechazada**.
+## Requisitos previos
 
-### Flujo general:
+- JDK 17 o superior
+- Maven 3.6 o superior
+- Docker y Docker Compose
 
-```mermaid
-flowchart LR
-  Transaction -- 1.) Guarda operación con estado pendiente --> transactionDatabase[(Database)]
-  Transaction -- 2.) Envía evento de registro de operación --> Anti-Fraud
-  Anti-Fraud -- 3.a) Envía evento de cambio de estado de operación a aprobado --> Transaction
-  Anti-Fraud -- 3.b) Envía evento de cambio de estado de operación a rechazado --> Transaction
-  Transaction -- 4.) Actualiza operación con el estado recibido por Anti-Fraud --> transactionDatabase[(Database)]
+## Configuración del entorno
+
+El proyecto incluye un archivo `docker-compose.yml` para configurar los servicios requeridos:
+
+```bash
+# Iniciar los servicios
+docker-compose up -d
+
+# Verificar que los servicios estén corriendo
+docker-compose ps
 ```
 
-## 🛠️ Stack Tecnológico
+## Compilación y ejecución
 
-Este reto debe ser resuelto utilizando las siguientes tecnologías:
+```bash
+# Compilar el proyecto
+mvn clean package
 
-- Java + Spring Boot
-- PostgreSQL como base de datos
-- Apache Kafka como sistema de mensajería
+# Ejecutar la aplicación
+java -jar target/transactions-service-0.0.1-SNAPSHOT.jar
+```
 
-> 🐳 Se incluye un `docker-compose.yml` para que puedas configurar tu entorno de desarrollo fácilmente.
+Alternativamente, puede ejecutar la aplicación directamente con Maven:
 
----
+```bash
+mvn spring-boot:run
+```
 
-## 🎯 Endpoints esperados
+## API REST
 
-Deberías implementar dos recursos a nivel de API:
+### Crear una transacción
 
-### 1. Crear operación
+```
+POST /transactions
+```
 
-**POST /transactions**
-
+**Cuerpo de la solicitud:**
 ```json
 {
   "accountExternalIdDebit": "GUID",
@@ -59,10 +75,28 @@ Deberías implementar dos recursos a nivel de API:
 }
 ```
 
-### 2. Consultar operación
+**Respuesta:**
+```json
+{
+  "transactionExternalId": "GUID",
+  "transactionType": {
+    "name": "Transfer"
+  },
+  "transactionStatus": {
+    "name": "Pending"
+  },
+  "value": 120,
+  "createdAt": "2024-03-24T10:20:30Z"
+}
+```
 
-**GET /transactions/{transactionExternalId}**
+### Consultar una transacción
 
+```
+GET /transactions/{transactionExternalId}
+```
+
+**Respuesta:**
 ```json
 {
   "transactionExternalId": "GUID",
@@ -77,23 +111,37 @@ Deberías implementar dos recursos a nivel de API:
 }
 ```
 
-## 🚀 Escenario opcional (Bonus)
+## Pruebas
 
-Puedes elegir cualquier enfoque para almacenar las transacciones. Sin embargo, ten en cuenta que podríamos enfrentar escenarios con **alto volumen de operaciones**, tanto en lectura como en escritura simultánea.
+Para ejecutar las pruebas unitarias:
 
-**Pregunta opcional:** ¿Cómo abordarías este requisito de escalabilidad y concurrencia?
+```bash
+mvn test
+```
 
----
+## Arquitectura
 
-## 📬 Envío de tu solución
+La solución sigue una arquitectura basada en microservicios con los siguientes componentes:
 
-1. Haz un **fork** de este repositorio.
-2. Realiza tu implementación en tu fork.
-3. Abre una **Pull Request (PR)** a este repositorio con tu solución.
+- **API REST**: Expone los endpoints para crear y consultar transacciones
+- **Servicio de Transacciones**: Gestiona la lógica de negocio para las transacciones
+- **Servicio Anti-Fraude**: Valida las transacciones según las reglas de negocio
+- **Kafka**: Sistema de mensajería para comunicación asíncrona entre componentes
+- **PostgreSQL**: Base de datos relacional para almacenar las transacciones
 
-No hay limitaciones estrictas en cuanto a la arquitectura o estilo de código. Siéntete libre de aplicar el paradigma, patrones y modularización que consideres más adecuados para resolver el problema.
+## Consideraciones de Escalabilidad y Concurrencia
 
----
+Para abordar escenarios con alto volumen de operaciones, se han implementado las siguientes estrategias:
 
-¿Tienes dudas?  
-No dudes en contactarnos. ¡Mucho éxito y a divertirse programando! 💪😎
+1. **Procesamiento asíncrono**: Utilizando Kafka para desacoplar la creación y validación de transacciones
+2. **Transacciones idempotentes**: Garantizando que operaciones duplicadas no generen efectos no deseados
+3. **Índices optimizados**: Facilitando la búsqueda rápida de transacciones
+
+Para más detalles sobre estrategias de escalabilidad, consultar el documento `ESCALABILIDAD.md`.
+
+## Posibles mejoras
+
+- Implementación de caché para mejorar el rendimiento de las consultas frecuentes
+- Particionamiento de la base de datos para manejar grandes volúmenes de datos
+- Implementación de un sistema de monitoreo y alertas
+- Configuración de Circuit Breakers para mayor resiliencia
