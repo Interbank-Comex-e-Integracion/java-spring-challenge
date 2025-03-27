@@ -12,17 +12,20 @@ import com.intercorp.challenge.ms_transaction.domain.TransactionStatus;
 import com.intercorp.challenge.ms_transaction.domain.TransactionType;
 import com.intercorp.challenge.ms_transaction.infrastructure.messaging.TransactionEventPublisher;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final TransactionEventPublisher transactionEventPublisher;
 
+    @Transactional
     public Transaction createTransaction(Transaction transaction) {
-        transaction.setTransactionExternalId(UUID.randomUUID());
         transaction.setTransactionType(TransactionType.TRANSFER);
         transaction.setTransactionStatus(TransactionStatus.PENDING);
         transaction.setCreatedAt(LocalDateTime.now());
