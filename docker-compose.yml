@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: transactions_db
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Monta el script SQL
     networks:
       - backend
 
@@ -32,6 +34,36 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_BROKER_ID: 1
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - backend
+
+  transaction-service:
+    build:
+      context: ./src/ms-transaction # Ruta al directorio del Dockerfile
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - kafka
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/transactions_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    networks:
+      - backend
+
+  anti-fraud-service:
+    build:
+      context: ./src/ms-anti-fraud # Ruta al directorio del Dockerfile
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     networks:
       - backend
 
