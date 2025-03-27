@@ -17,8 +17,8 @@ public class TransactionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID transactionExternalId;
-    private UUID accountExternalIdDebit;
-    private UUID accountExternalIdCredit;
+    private String accountExternalIdDebit;
+    private String accountExternalIdCredit;
     private Integer transferTypeId;
     private BigDecimal value;
     @Enumerated(EnumType.STRING)

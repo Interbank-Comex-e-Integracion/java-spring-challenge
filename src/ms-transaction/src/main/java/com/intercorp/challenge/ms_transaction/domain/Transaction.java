@@ -9,8 +9,8 @@ import lombok.Data;
 @Data
 public class Transaction {
     private UUID transactionExternalId;
-    private UUID accountExternalIdDebit;
-    private UUID accountExternalIdCredit;
+    private String accountExternalIdDebit;
+    private String accountExternalIdCredit;
     private Integer transferTypeId;
     private BigDecimal value;
     private TransactionType transactionType;
